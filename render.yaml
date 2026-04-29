@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: teamdev-terminal
+    env: python
+    buildCommand: echo "no build"
+    startCommand: python3 terminal_server.py
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: KEEPALIVE_URL
+        fromService:
+          type: web
+          name: teamdev-terminal
+          property: host

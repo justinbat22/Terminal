@@ -1,0 +1,45 @@
+version: '3.9'
+
+services:
+
+  terminal:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: TeamDevXTerminal
+    image: teamdev/terminal:latest
+    restart: always
+    ports:
+      - "${PORT:-7681}:${PORT:-7681}"
+    environment:
+      - PORT=${PORT:-7681}
+      - KEEPALIVE_URL=${KEEPALIVE_URL:-}
+      - TERM=xterm-256color
+      - LANG=en_US.UTF-8
+    volumes:
+      - uploads:/tmp/teamdev_uploads
+      - bash_history:/root/.bash_history_dir
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${PORT:-7681}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "com.teamdev.service=terminal"
+      - "com.teamdev.version=2.4.0"
+
+volumes:
+  uploads:
+    driver: local
+  bash_history:
+    driver: local
+
+networks:
+  default:
+    name: teamdev-net

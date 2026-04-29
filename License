@@ -1,0 +1,52 @@
+MIT License
+
+Copyright (c) 2026 TeamDevXBots (@MR_ARMAN_08)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+Third-Party Notices
+-------------------
+
+This software includes or makes use of the following third-party components:
+
+1. xterm.js (https://xtermjs.org/)
+   Copyright (c) 2017–2024 The xterm.js authors
+   Licensed under the MIT License.
+
+2. JetBrains Mono (https://www.jetbrains.com/lp/mono/)
+   Copyright (c) 2020 JetBrains
+   Licensed under the SIL Open Font License 1.1.
+
+3. Orbitron (https://fonts.google.com/specimen/Orbitron)
+   Copyright (c) Matt McInerney
+   Licensed under the SIL Open Font License 1.1.
+
+4. Share Tech Mono (https://fonts.google.com/specimen/Share+Tech+Mono)
+   Copyright (c) Carrois Apostrophe
+   Licensed under the SIL Open Font License 1.1.
+
+5. Ubuntu 24.04 LTS (base Docker image, https://ubuntu.com/)
+   Ubuntu is a registered trademark of Canonical Ltd.
+   The Ubuntu base image is distributed under its own licenses.
+   See https://hub.docker.com/_/ubuntu for details.
+
+The licenses of these third-party components do not affect your rights under
+the MIT License above for the TeamDev X Terminal source code itself.
