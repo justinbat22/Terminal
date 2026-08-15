@@ -187,6 +187,21 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .mbtn.cancel{background:var(--bg3);color:var(--text2);border:1px solid var(--border2)}
 .mbtn.cancel:hover{border-color:var(--red);color:var(--red)}
 ::selection{background:rgba(0,255,157,.18);color:var(--green)}
+@media (pointer: coarse), (max-width: 768px) {
+  #xterm-container {
+    touch-action: pan-x pan-y;
+  }
+
+  #xterm-container .xterm {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
+  .ctrl-key {
+    min-height: 38px;
+    padding: 8px 14px;
+  }
+}
 </style>
 </head>
 <body>
@@ -328,6 +343,10 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 </div>
 
 <div id="ctrl-bar">
+  <button class="ctrl-key green" onclick="copySelected()">Copy</button>
+  <button class="ctrl-key" onclick="copyAll()">Copy All</button>
+  <button class="ctrl-key" onclick="pasteClipboard()">Paste</button>
+  
   <button class="ctrl-key red" onclick="sendCtrlC()">Ctrl+C</button>
   <button class="ctrl-key amber" onclick="sendCtrlD()">Ctrl+D</button>
   <button class="ctrl-key" style="border-color:#a78bfa;color:#a78bfa" onclick="openCtrlPicker()">Ctrl+…</button>
@@ -720,6 +739,90 @@ document.addEventListener('keydown',e=>{
     case 'n':e.preventDefault();window.open(location.href,'_blank');break;
   }
 });
+  async function copySelected() {
+  if (!term) return;
+
+  const text = term.getSelection();
+
+  if (!text) {
+    showToast('No text selected', 'amber');
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast('✓ Copied', 'green');
+    term.clearSelection();
+  } catch (err) {
+    // Fallback for browsers that block Clipboard API
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+
+    try {
+      document.execCommand('copy');
+      showToast('✓ Copied', 'green');
+      term.clearSelection();
+    } catch (e) {
+      showToast('✕ Copy failed', 'red');
+    }
+
+    textarea.remove();
+  }
+}
+
+async function copyAll() {
+  if (!term) return;
+
+  const text = term.getSelection() || term.getBuffer().active.getLine(0)?.translateToString();
+
+  // Get the entire terminal buffer
+  let output = '';
+
+  const buffer = term.buffer.active;
+
+  for (let i = 0; i < buffer.length; i++) {
+    const line = buffer.getLine(i);
+    if (line) {
+      output += line.translateToString(true) + '\n';
+    }
+  }
+
+  output = output.trimEnd();
+
+  if (!output) {
+    showToast('Terminal is empty', 'amber');
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(output);
+    showToast('✓ Terminal copied', 'green');
+  } catch (err) {
+    showToast('✕ Copy failed', 'red');
+  }
+}
+
+async function pasteClipboard() {
+  try {
+    const text = await navigator.clipboard.readText();
+
+    if (!text) {
+      showToast('Clipboard is empty', 'amber');
+      return;
+    }
+
+    sendRaw(text);
+    term.focus();
+    showToast('✓ Pasted', 'green');
+
+  } catch (err) {
+    showToast('✕ Clipboard permission denied', 'red');
+  }
+}
 </script>
 </body>
 </html>
