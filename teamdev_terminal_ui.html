@@ -202,6 +202,16 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     padding: 8px 14px;
   }
 }
+.line-info {
+  color: var(--cyan);
+  font-size: 10px;
+  padding: 7px 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  border: 1px solid var(--border2);
+  border-radius: 5px;
+  background: var(--bg3);
+}
 </style>
 </head>
 <body>
@@ -343,9 +353,11 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 </div>
 
 <div id="ctrl-bar">
-  <button class="ctrl-key green" onclick="copyLastLines(10)">Copy 10</button>
-  <button class="ctrl-key green" onclick="copyLastLines(20)">Copy 20</button>
-  <button class="ctrl-key green" onclick="copyLastLines(50)">Copy 50</button>
+  <span id="line-info" class="line-info">Lines: 0</span>
+  
+  <button class="ctrl-key green" onclick="copyBottomLines(10)">Copy 10</button>
+  <button class="ctrl-key green" onclick="copyBottomLines(20)">Copy 20</button>
+  <button class="ctrl-key green" onclick="copyBottomLines(50)">Copy 50</button>
   <button class="ctrl-key" onclick="copyRange()">Copy Range</button>
   <button class="ctrl-key" onclick="copyAll()">Copy All</button>
   <button class="ctrl-key" onclick="pasteClipboard()">Paste</button>
@@ -805,24 +817,51 @@ function getTerminalLines() {
 }
 
 
-async function copyLastLines(count) {
-  const lines = getTerminalLines();
+async function copyBottomLines(count) {
+  if (!term) return;
 
-  if (!lines.length) {
+  const buffer = term.buffer.active;
+  const total = buffer.length;
+
+  if (total === 0) {
     showToast('Terminal is empty', 'amber');
     return;
   }
 
-  const start = Math.max(0, lines.length - count);
-  const selected = lines.slice(start);
+  // Bottom N lines
+  const start = Math.max(0, total - count);
+  const end = total - 1;
 
-  const text = selected.join('\n').trimEnd();
+  try {
+    // Use xterm's native line selection
+    term.selectLines(start, end);
 
-  const success = await writeClipboard(text);
+    const text = term.getSelection();
 
-  if (success) {
-    showToast(`✓ Copied last ${selected.length} lines`, 'green');
-  } else {
+    if (!text) {
+      term.clearSelection();
+      showToast('Nothing to copy', 'amber');
+      return;
+    }
+
+    const success = await writeClipboard(text);
+
+    term.clearSelection();
+
+    if (success) {
+      showToast(
+        `✓ Copied lines ${start + 1}-${end + 1}`,
+        'green'
+      );
+    } else {
+      showToast('✕ Copy failed', 'red');
+    }
+
+  } catch (err) {
+    term.clearSelection();
+
+    console.error('Bottom line copy failed:', err);
+
     showToast('✕ Copy failed', 'red');
   }
 }
@@ -922,6 +961,32 @@ async function pasteClipboard() {
     showToast('✕ Clipboard permission denied', 'red');
   }
 }
+function updateLineInfo() {
+  if (!term) return;
+
+  const buffer = term.buffer.active;
+  const total = buffer.length;
+
+  const info = document.getElementById('line-info');
+
+  if (!info) return;
+
+  if (total === 0) {
+    info.textContent = 'Lines: 0';
+    return;
+  }
+
+  const bottom10Start = Math.max(1, total - 9);
+  const bottom20Start = Math.max(1, total - 19);
+  const bottom50Start = Math.max(1, total - 49);
+
+  info.textContent =
+    `Lines: ${total} | ` +
+    `10: ${bottom10Start}-${total} | ` +
+    `20: ${bottom20Start}-${total} | ` +
+    `50: ${bottom50Start}-${total}`;
+}
+setInterval(updateLineInfo, 500);
 </script>
 </body>
 </html>
