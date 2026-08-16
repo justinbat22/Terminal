@@ -343,12 +343,15 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 </div>
 
 <div id="ctrl-bar">
-  <button class="ctrl-key green" onclick="copySelected()">Copy</button>
+  <button class="ctrl-key green" onclick="copyLastLines(10)">Copy 10</button>
+  <button class="ctrl-key green" onclick="copyLastLines(20)">Copy 20</button>
+  <button class="ctrl-key green" onclick="copyLastLines(50)">Copy 50</button>
+  <button class="ctrl-key" onclick="copyRange()">Copy Range</button>
   <button class="ctrl-key" onclick="copyAll()">Copy All</button>
   <button class="ctrl-key" onclick="pasteClipboard()">Paste</button>
   
   <button class="ctrl-key red" onclick="sendCtrlC()">Ctrl+C</button>
-  <button class="ctrl-key amber" onclick="sendCtrlD()">Ctrl+D</button>
+  <button class="ctrl-key amber" onclick="sendCtrlX()">Ctrl+X</button>
   <button class="ctrl-key" style="border-color:#a78bfa;color:#a78bfa" onclick="openCtrlPicker()">Ctrl+…</button>
   <button class="ctrl-key" onclick="sendRaw('\x1b')">ESC</button>
   <button class="ctrl-key" onclick="sendRaw('\t')">TAB</button>
@@ -739,72 +742,167 @@ document.addEventListener('keydown',e=>{
     case 'n':e.preventDefault();window.open(location.href,'_blank');break;
   }
 });
-  async function copySelected() {
-  if (!term) return;
-
-  const text = term.getSelection();
-
+  async function writeClipboard(text) {
   if (!text) {
-    showToast('No text selected', 'amber');
-    return;
+    showToast('Nothing to copy', 'amber');
+    return false;
   }
 
   try {
-    await navigator.clipboard.writeText(text);
-    showToast('✓ Copied', 'green');
-    term.clearSelection();
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
   } catch (err) {
-    // Fallback for browsers that block Clipboard API
+    console.warn('Clipboard API failed:', err);
+  }
+
+  // Android/browser fallback
+  try {
     const textarea = document.createElement('textarea');
+
     textarea.value = text;
     textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
     textarea.style.opacity = '0';
-    document.body.appendChild(textarea);
-    textarea.select();
 
-    try {
-      document.execCommand('copy');
-      showToast('✓ Copied', 'green');
-      term.clearSelection();
-    } catch (e) {
-      showToast('✕ Copy failed', 'red');
-    }
+    document.body.appendChild(textarea);
+
+    textarea.focus();
+    textarea.select();
+    textarea.setSelectionRange(0, textarea.value.length);
+
+    const success = document.execCommand('copy');
 
     textarea.remove();
+
+    return success;
+  } catch (err) {
+    console.error('Clipboard fallback failed:', err);
+    return false;
   }
 }
 
-async function copyAll() {
-  if (!term) return;
 
-  const text = term.getSelection() || term.getBuffer().active.getLine(0)?.translateToString();
-
-  // Get the entire terminal buffer
-  let output = '';
+function getTerminalLines() {
+  if (!term) return [];
 
   const buffer = term.buffer.active;
+  const lines = [];
 
   for (let i = 0; i < buffer.length; i++) {
     const line = buffer.getLine(i);
+
     if (line) {
-      output += line.translateToString(true) + '\n';
+      lines.push(line.translateToString(true));
+    } else {
+      lines.push('');
     }
   }
 
-  output = output.trimEnd();
+  return lines;
+}
 
-  if (!output) {
+
+async function copyLastLines(count) {
+  const lines = getTerminalLines();
+
+  if (!lines.length) {
     showToast('Terminal is empty', 'amber');
     return;
   }
 
-  try {
-    await navigator.clipboard.writeText(output);
-    showToast('✓ Terminal copied', 'green');
-  } catch (err) {
+  const start = Math.max(0, lines.length - count);
+  const selected = lines.slice(start);
+
+  const text = selected.join('\n').trimEnd();
+
+  const success = await writeClipboard(text);
+
+  if (success) {
+    showToast(`✓ Copied last ${selected.length} lines`, 'green');
+  } else {
     showToast('✕ Copy failed', 'red');
   }
 }
+
+
+async function copyAll() {
+  const lines = getTerminalLines();
+
+  if (!lines.length) {
+    showToast('Terminal is empty', 'amber');
+    return;
+  }
+
+  const text = lines.join('\n').trimEnd();
+
+  const success = await writeClipboard(text);
+
+  if (success) {
+    showToast(`✓ Copied ${lines.length} lines`, 'green');
+  } else {
+    showToast('✕ Copy failed', 'red');
+  }
+}
+
+
+async function copyRange() {
+  const lines = getTerminalLines();
+
+  if (!lines.length) {
+    showToast('Terminal is empty', 'amber');
+    return;
+  }
+
+  const startInput = prompt(
+    `Start line (1-${lines.length}):`
+  );
+
+  if (startInput === null) return;
+
+  const endInput = prompt(
+    `End line (1-${lines.length}):`
+  );
+
+  if (endInput === null) return;
+
+  const start = parseInt(startInput, 10);
+  const end = parseInt(endInput, 10);
+
+  if (
+    Number.isNaN(start) ||
+    Number.isNaN(end) ||
+    start < 1 ||
+    end < start ||
+    start > lines.length
+  ) {
+    showToast('Invalid line range', 'red');
+    return;
+  }
+
+  const actualEnd = Math.min(end, lines.length);
+
+  const selected = lines.slice(
+    start - 1,
+    actualEnd
+  );
+
+  const text = selected.join('\n').trimEnd();
+
+  const success = await writeClipboard(text);
+
+  if (success) {
+    showToast(
+      `✓ Copied lines ${start}-${actualEnd}`,
+      'green'
+    );
+  } else {
+    showToast('✕ Copy failed', 'red');
+  }
+}
+
 
 async function pasteClipboard() {
   try {
@@ -817,6 +915,7 @@ async function pasteClipboard() {
 
     sendRaw(text);
     term.focus();
+
     showToast('✓ Pasted', 'green');
 
   } catch (err) {
